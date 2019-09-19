@@ -170,7 +170,6 @@ if test $VERBOSITY -ge 2; then
     --volume "${PWD}:/input:ro" \
     --volume "${PWD}:/output:rw" \
     --workdir "${WORKDIR}" \
-    --user $UID:$GROUPS \
     -it "$CONTAINER" /bin/bash -c "cd ..; source set-env.sh; cd -; python run-flownet-docker.py --verbose --gpu ${GPU_IDX} ${WEIGHTS} ${DEPLOYPROTO} ${FIRST_INPUT} ${SECOND_INPUT} ${OUTPUT}"
 else
   ${DOCKER_CMD} \
@@ -178,7 +177,6 @@ else
     --volume "${PWD}:/input:ro" \
     --volume "${PWD}:/output:rw" \
     --workdir "${WORKDIR}" \
-    --user $UID:$GROUPS \
     -it "$CONTAINER" /bin/bash -c "cd ..; source set-env.sh; cd -; python run-flownet-docker.py --gpu ${GPU_IDX} ${WEIGHTS} ${DEPLOYPROTO} ${FIRST_INPUT} ${SECOND_INPUT} ${OUTPUT}"
     > /dev/null;
 fi

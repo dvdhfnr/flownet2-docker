@@ -50,6 +50,45 @@ def writeFlow(name, flow):
     f.flush()
     f.close() 
 
+def write_pfm(path, image, scale=1):
+    """Write pfm file.
+
+    Args:
+        path (str): pathto file
+        image (array): data
+        scale (int, optional): Scale. Defaults to 1.
+    """
+
+    with open(path, "wb") as file:
+        color = None
+
+        if image.dtype.name != "float32":
+            raise Exception("Image dtype must be float32.")
+
+        image = np.flipud(image)
+
+        if len(image.shape) == 3 and image.shape[2] == 3:  # color image
+            color = True
+        elif (
+            len(image.shape) == 2 or len(image.shape) == 3 and image.shape[2] == 1
+        ):  # greyscale
+            color = False
+        else:
+            raise Exception("Image must have H x W x 3, H x W x 1 or H x W dimensions.")
+
+        file.write("PF\n" if color else "Pf\n".encode())
+        file.write("%d %d\n".encode() % (image.shape[1], image.shape[0]))
+
+        endian = image.dtype.byteorder
+
+        if endian == "<" or endian == "=" and sys.byteorder == "little":
+            scale = -scale
+
+        file.write("%f\n".encode() % scale)
+
+        image.tofile(file)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('caffemodel', help='path to model')
 parser.add_argument('deployproto', help='path to deploy prototxt template')
@@ -73,7 +112,11 @@ else:
                  [dockerize_filepath_input(args.img1),]]
   output_files = [dockerize_filepath_output(args.out),]
 
-for i in range(len(output_files)):
+width = -1
+height = -1
+n = len(output_files)
+
+for i in range(n):
   in0 = input_files[0][i]
   in1 = input_files[1][i]
   out = output_files[i]
@@ -89,7 +132,7 @@ for i in range(len(output_files)):
   if len(img1.shape) < 3: input_data.append(img1[np.newaxis, np.newaxis, :, :])
   else:                   input_data.append(img1[np.newaxis, :, :, :].transpose(0, 3, 1, 2)[:, [2, 1, 0], :, :])
 
-  if i == 0:
+  if width != input_data[0].shape[3] or height != input_data[0].shape[2]:
     width = input_data[0].shape[3]
     height = input_data[0].shape[2]
     vars = {}
@@ -126,10 +169,13 @@ for i in range(len(output_files)):
   # There is some non-deterministic nan-bug in caffe
   # it seems to be a race-condition 
   #
-  print('Network forward pass using %s.' % args.caffemodel)
-  i = 1
-  while i<=5:
-      i+=1
+  # print('Network forward pass using %s.' % args.caffemodel)
+
+  print("computing %s (%d / %d)" % (out, i, n))
+
+  t = 1
+  while t<=5:
+      t+=1
 
       net.forward(**input_dict)
 
@@ -143,12 +189,12 @@ for i in range(len(output_files)):
               containsNaN = True
 
       if not containsNaN:
-          print('Succeeded.')
+          # print('Succeeded.')
           break
       else:
           print('**************** FOUND NANs, RETRYING ****************')
 
   blob = np.squeeze(net.blobs['predict_flow_final'].data).transpose(1, 2, 0)
 
-  writeFlow(out, blob)
-
+  # writeFlow(out, blob)
+  write_pfm(out, blob[:, :, 0].astype(np.float32))

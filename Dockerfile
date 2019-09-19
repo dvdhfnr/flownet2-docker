@@ -1,6 +1,9 @@
 ## Note: Our Caffe version does not work with CuDNN 6
 FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
 
+ENV http_proxy http://proxy-mu.intel.com:911
+ENV https_proxy http://proxy-mu.intel.com:912
+
 ## Put everything in some subfolder
 WORKDIR "/flownet2"
 
@@ -54,7 +57,8 @@ RUN git clone https://github.com/lmb-freiburg/flownet2                      && \
     cd flownet2                                                             && \
     rm -rf .git                                                             && \
     cd models                                                               && \
-    bash download-models.sh                                                 && \
+    wget --no-check-certificate https://lmb.informatik.uni-freiburg.de/resources/binaries/flownet2/flownet2-models.tar.gz && \
+    tar xvzf flownet2-models.tar.gz                                         && \
     rm flownet2-models.tar.gz                                               && \
     cd ..                                                                   && \
     make -j`nproc`                                                          && \
